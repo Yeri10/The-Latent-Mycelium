@@ -1,0 +1,1 @@
+mclm style, clustered filament growth organized into dense local nodes with branching edges

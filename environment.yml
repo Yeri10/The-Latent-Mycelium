@@ -1,0 +1,30 @@
+name: ml-art
+channels:
+  # Prefer the PyTorch channel first for the torch stack on macOS.
+  - pytorch
+  # Use conda-forge for the rest of the scientific / notebook packages.
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pillow
+  - opencv
+  - pytorch
+  - torchvision
+  - torchaudio
+  - jupyter
+  - ipykernel
+  - diffusers
+  - transformers
+  - accelerate
+  - safetensors
+  - websockets
+  - datasets
+  - peft
+  - python-dotenv
+
+  - pip:
+      # MediaPipe is usually easier to install from PyPI than from Conda.
+      - mediapipe

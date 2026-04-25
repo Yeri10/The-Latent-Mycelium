@@ -1,0 +1,32 @@
+{
+  "clustered": {
+    "images": 12,
+    "captions": 12,
+    "metadata": 12
+  },
+  "dense": {
+    "images": 11,
+    "captions": 11,
+    "metadata": 11
+  },
+  "linear": {
+    "images": 14,
+    "captions": 14,
+    "metadata": 14
+  },
+  "radial": {
+    "images": 17,
+    "captions": 17,
+    "metadata": 17
+  },
+  "sparse": {
+    "images": 10,
+    "captions": 10,
+    "metadata": 10
+  },
+  "tangled": {
+    "images": 16,
+    "captions": 16,
+    "metadata": 16
+  }
+}
