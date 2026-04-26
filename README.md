@@ -1,66 +1,138 @@
 # The Latent Mycelium
 
-The Latent Mycelium is a macOS-based art and ML project that combines LoRA training, realtime image generation, and TouchDesigner bridge scripts driven by environmental data.
+The Latent Mycelium is a macOS-based art and ML project that combines LoRA image generation, PM2.5-driven prompt control, and TouchDesigner playback through NDI.
 
-## Setup
+The main live-performance workflow is:
 
-These instructions are written for an Apple Silicon Mac.
+1. Run `td_ndi_bridge.py` from Terminal.
+2. The script generates mycelium images from a fixed or live PM2.5 value.
+3. The script sends the generated frames as an NDI stream.
+4. TouchDesigner receives the stream through an `NDI In TOP`.
 
-### Prerequisites
+## Run This Project
 
-Install these first:
+Start with **Quick Run** if you want to test the system with a fixed PM2.5 value. This is the safest first step.
 
-- Git
-- Conda or Miniforge
-- `mamba` in your base Conda environment
+Use **Live OpenAQ Data** if you want to run the project with realtime PM2.5 data from the OpenAQ API. In live mode, do not include `--manual-pm25`; the script reads `OPENAQ_API_KEY` and `OPENAQ_LOCATION_ID` from the project `.env` file.
 
-If `mamba` is not installed yet:
+After the Python sender is running, open the TouchDesigner file and follow **TouchDesigner** to receive the `Latent Mycelium NDI` stream.
+
+## Quick Run
+
+Use this section if the Conda environments already exist.
+
+### 1. Open the repository
+
+```bash
+cd /Users/yerie/Documents/GitHub/The-Latent-Mycelium
+```
+
+If the repository is cloned somewhere else, replace the path with your local project path.
+
+### 2. Activate the NDI environment
+
+```bash
+conda activate ml-art-ndi
+```
+
+The terminal prompt should begin with:
+
+```text
+(ml-art-ndi)
+```
+
+### 3. Run a short test
+
+This command generates one short buffered clip and then exits. It is the best first check.
+
+```bash
+python td_ndi_bridge.py --device cpu --manual-pm25 25 --duration 8 --image-interval 4 --ndi-fps 2 --run-once
+```
+
+The first run can take several minutes because PyTorch, Diffusers, the base Stable Diffusion model, and the LoRA weights need to load.
+
+Expected terminal output includes JSON messages such as:
+
+```text
+"event": "poll"
+"regenerating": true
+"event": "clip_ready"
+```
+
+When this succeeds, the script writes files to:
+
+```text
+outputs/latent_exploration/ndi_live/
+```
+
+The most useful preview file is:
+
+```text
+outputs/latent_exploration/ndi_live/latest.png
+```
+
+### 4. Run the continuous test sender
+
+After the short test works, run the continuous NDI sender with the same fixed PM2.5 test value:
+
+```bash
+python td_ndi_bridge.py --device cpu --manual-pm25 25 --duration 20 --image-interval 8 --ndi-fps 2 --change-threshold 5 --poll-interval 60
+```
+
+Leave this Terminal process running while using TouchDesigner. Stop it with `Ctrl+C` when finished.
+
+The NDI stream name is:
+
+```text
+Latent Mycelium NDI
+```
+
+## TouchDesigner
+
+Open the TouchDesigner project:
+
+```text
+The-Latent-Mycelium-Live-Visual/The-Latent-Mycelium-Live-Visual.toe
+```
+
+In TouchDesigner:
+
+1. Add or select an `NDI In TOP`.
+2. Open its source/device menu.
+3. Select `Latent Mycelium NDI`.
+
+If you changed the sender name with `--ndi-name`, select that custom name instead.
+
+## Which Environment To Use
+
+This repository uses two Conda environments because the live NDI workflow and the ML notebook/training workflow have different dependency needs.
+
+Use `ml-art-ndi` for:
+
+- [td_ndi_bridge.py](td_ndi_bridge.py)
+- NDI output to TouchDesigner
+- live PM2.5/manual PM2.5 playback
+
+Use `ml-art` for:
+
+- Jupyter notebooks
+- LoRA training
+- Diffusers experiments outside the NDI sender
+- MediaPipe and OpenCV work
+
+Do not run `td_ndi_bridge.py` from `base` or `ml-art`. It should be run from `ml-art-ndi`.
+
+## Install Environments
+
+These instructions are tested on Apple Silicon macOS. Windows users may be able to run the project with Conda, CPU or CUDA PyTorch, TouchDesigner, and NDI installed, but the Windows setup is not fully tested.
+
+Install `mamba` in the base Conda environment if needed:
 
 ```bash
 conda install -n base -c conda-forge mamba
 ```
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/<your-user-or-org>/The-Latent-Mycelium.git
-cd The-Latent-Mycelium
-```
-
-## Project Scope
-
-This repository currently includes:
-
-- LoRA training assets and notebooks for mycelium image generation
-- a maintained Conda environment for the main ML workflow
-- a buffered NDI workflow for TouchDesigner playback
-- dataset captions and metadata used for training and prompt control
-
-## Repository Layout
-
-- [environment.yml](environment.yml): maintained Conda environment for the main project workflow
-- [ml-art-environment.yml](ml-art-environment.yml): exported snapshot of a known working environment
-- [train_text_to_image_lora.py](train_text_to_image_lora.py): LoRA training script
-- [td_ndi_bridge.py](td_ndi_bridge.py): buffered NDI renderer and sender for TouchDesigner playback
-- [dataset](dataset): training images, captions, and metadata
-- [training_runs](training_runs): trained LoRA outputs
-
-`td_ndi_bridge.py` now lives in the repository root so it can be run directly without a `scripts/` prefix.
-
-## Environment Strategy
-
-This repo uses two Python environments:
-
-1. `ml-art`
-   Used for notebooks, LoRA training, diffusers inference, MediaPipe, and OpenCV.
-2. `ml-art-ndi`
-   Used for [td_ndi_bridge.py](td_ndi_bridge.py) and NDI output to TouchDesigner.
-
-The split matters because `ndi-python` works cleanly in a separate Python 3.10 environment, while the main project environment is maintained on Python 3.11.
-
-### 2. Install the environments
-
-Install `ml-art` first:
+### Install `ml-art`
 
 ```bash
 mamba env create -f environment.yml
@@ -85,12 +157,7 @@ python -c "import websockets; print(websockets.__version__)"
 python -m jupyter kernelspec list
 ```
 
-Expected:
-
-- `torch.backends.mps.is_available()` should print `True` on a compatible Apple Silicon Mac
-- Jupyter should list `ml-art`
-
-Install `ml-art-ndi` next:
+### Install `ml-art-ndi`
 
 ```bash
 conda create -n ml-art-ndi python=3.10 -y
@@ -105,96 +172,142 @@ Verify `ml-art-ndi`:
 python -c "import NDIlib, requests, torch; from PIL import Image; import diffusers, transformers, accelerate, safetensors, peft, torchvision; print('buffered ndi env ok')"
 ```
 
-Expected:
+Expected output:
 
-- `buffered ndi env ok` prints
+```text
+buffered ndi env ok
+```
 
-## Terminal Workflow: NDI to TouchDesigner
+## Live OpenAQ Data
 
-The current TouchDesigner path in this repository is buffered NDI playback.
+The quick commands above use a fixed test value:
 
-### 3. Run the sender from the terminal
+```bash
+--manual-pm25 25
+```
 
-Important:
+To use live OpenAQ data instead, remove `--manual-pm25`. The script automatically reads OpenAQ settings from the project `.env` file:
 
-- Use `ml-art-ndi`, not `ml-art`
-- Run the command from the repository root
-- If `--device mps` does not work on your machine, switch it to `--device cpu`
+```text
+OPENAQ_API_KEY=...
+OPENAQ_LOCATION_ID=...
+```
 
-Basic manual test command:
+Run live API mode with:
 
 ```bash
 conda activate ml-art-ndi
-python td_ndi_bridge.py --device mps --manual-pm25 25 --duration 20 --image-interval 8 --ndi-fps 6 --change-threshold 5 --poll-interval 60
+python td_ndi_bridge.py --device cpu --duration 20 --image-interval 8 --ndi-fps 2 --change-threshold 5 --poll-interval 60
 ```
 
-What this command does:
+This polls OpenAQ every 60 seconds. If `--manual-pm25` is included, the script uses the fixed test value and does not call the API.
 
-- starts the NDI sender named `Latent Mycelium NDI`
-- generates buffered keyframes from a fixed PM2.5 value of `25`
-- loops the buffered frames over NDI for TouchDesigner
+## Common Parameters
 
-If you want to use live OpenAQ data instead of a fixed manual value:
+- `--device cpu`: safest device option; slower but reliable.
+- `--device mps`: uses Apple Metal if PyTorch MPS is available.
+- `--device auto`: tries CUDA, then MPS, then CPU.
+- `--manual-pm25 25`: uses a fixed PM2.5 value for testing.
+- `--duration 20`: buffered clip length in seconds.
+- `--image-interval 8`: seconds of clip time between generated keyframes.
+- `--ndi-fps 2`: NDI playback frame rate.
+- `--change-threshold 5`: only regenerate when PM2.5 changes enough.
+- `--poll-interval 60`: poll live data every 60 seconds.
+- `--run-once`: generate and play one buffered clip, then exit.
+
+## Troubleshooting
+
+### `KeyboardInterrupt` during `import torch`
+
+This usually means `Ctrl+C` was pressed while Python was still loading PyTorch. Run the command again and wait.
+
+CPU generation can be slow, especially the first time the model loads.
+
+### `ModuleNotFoundError`
+
+Check that the correct Conda environment is active:
 
 ```bash
-export OPENAQ_API_KEY="your_api_key_here"
-export OPENAQ_LOCATION_ID="your_location_id_here"
 conda activate ml-art-ndi
-python td_ndi_bridge.py --device mps --duration 20 --image-interval 8 --ndi-fps 6 --change-threshold 5 --poll-interval 60
 ```
 
-### 4. Receive the stream in TouchDesigner
+Then verify:
 
-In TouchDesigner:
+```bash
+python -c "import NDIlib, torch; print('ok')"
+```
 
-1. Add an `NDI In TOP`
-2. Open its source/device menu
-3. Select `Latent Mycelium NDI`
+### `CondaError: Run 'conda init' before 'conda activate'`
 
-If you override `--ndi-name`, select that custom name instead.
+Do not run `/Users/yerie/miniforge3/condabin/conda activate ...` directly.
 
-### 5. Check the output files
+Use:
 
-While the sender runs, it writes:
+```bash
+conda activate ml-art-ndi
+```
 
-- `outputs/latent_exploration/ndi_live/latest.json`
-- `outputs/latent_exploration/ndi_live/latest.png`
-- `outputs/latent_exploration/ndi_live/latest_controls.json`
-- timestamped metadata and keyframes in `outputs/latent_exploration/ndi_live/history/`
+If activation still fails in a new shell:
 
-### Common parameters
+```bash
+source ~/.zshrc
+conda activate ml-art-ndi
+```
 
-- `--device mps`: use Apple Metal on Apple Silicon
-- `--device cpu`: safer fallback if MPS is unavailable
-- `--manual-pm25 25`: use a fixed PM2.5 value for testing
-- `--duration 20`: buffered clip length in seconds
-- `--image-interval 8`: seconds of clip time between generated keyframes
-- `--ndi-fps 6`: playback fps for the buffered frames
-- `--change-threshold 5`: regenerate only when PM2.5 changes enough
-- `--poll-interval 60`: poll live data every 60 seconds
+### MPS does not work
 
-## VS Code and Jupyter
+Use CPU:
+
+```bash
+python td_ndi_bridge.py --device cpu --manual-pm25 25 --duration 8 --image-interval 4 --ndi-fps 2 --run-once
+```
+
+## Repository Layout
+
+- [README.md](README.md): setup and running instructions.
+- [environment.yml](environment.yml): maintained Conda environment for notebooks, training, and ML experiments.
+- [ml-art-environment.yml](ml-art-environment.yml): exported snapshot of a known working environment.
+- [train_text_to_image_lora.py](train_text_to_image_lora.py): LoRA training script.
+- [td_ndi_bridge.py](td_ndi_bridge.py): buffered NDI renderer and sender for TouchDesigner playback.
+- [dataset](dataset): training images, captions, and metadata.
+- [training_runs](training_runs): trained LoRA outputs and previews.
+- [The-Latent-Mycelium-Live-Visual](The-Latent-Mycelium-Live-Visual): TouchDesigner project files.
+
+## VS Code And Jupyter
 
 For notebooks and training work:
 
 1. Open the project in VS Code.
 2. Select the interpreter or kernel named `Python (ml-art)`.
-3. Keep `ml-art-ndi` for terminal-based buffered NDI runs unless you explicitly need a separate kernel for it.
+3. Keep `ml-art-ndi` for terminal-based NDI runs.
 
-## Snapshot Environment
+## Author And Date
 
-This repository also includes a full exported environment snapshot:
+- Author: Yerie Ye
+- Project date: 2026-04
+- Repository: The Latent Mycelium
 
-- [ml-art-environment.yml](ml-art-environment.yml)
+## Acknowledgements
 
-Use it only when you specifically want to recreate that exact exported state:
+This project builds on open-source ML, creative coding, and environmental data tools:
 
-```bash
-mamba env create -f ml-art-environment.yml
+- Hugging Face Diffusers, Transformers, Accelerate, Safetensors, PEFT, and Datasets for Stable Diffusion LoRA training and inference.
+- Stable Diffusion and latent diffusion research for the base text-to-image generation workflow.
+- LoRA research by Hu et al. for efficient fine-tuning.
+- PyTorch for model execution on CPU, MPS, or CUDA devices.
+- OpenAQ for PM2.5 environmental data access.
+- TouchDesigner for realtime visual playback and installation control.
+- NDI and `ndi-python` for sending generated image buffers into TouchDesigner.
+- PyFAD and course NDI examples for reference patterns used in the NDI sender workflow.
+
+## Large Files
+
+GitHub rejects regular Git files larger than 100MB.
+
+Do not commit generated zip archives or other large exports. Zip files are ignored by this repository:
+
+```text
+*.zip
 ```
 
-For day-to-day maintenance:
-
-- edit [environment.yml](environment.yml)
-- use `mamba env create -f environment.yml` or `mamba env update -f environment.yml`
-- keep [ml-art-environment.yml](ml-art-environment.yml) as an exported snapshot, not the primary hand-edited file
+For large model artifacts, use Git LFS, Hugging Face, Google Drive, or GitHub Releases instead of committing them directly.

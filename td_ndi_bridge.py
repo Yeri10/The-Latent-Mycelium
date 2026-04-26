@@ -80,6 +80,26 @@ STEPS_MIN = 20
 STEPS_MAX = 23
 
 
+def load_project_env() -> None:
+    env_path = ROOT / ".env"
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_project_env()
+
+
 def env_float(name: str) -> Optional[float]:
     value = os.getenv(name)
     if value is None or value == "":
@@ -652,7 +672,7 @@ def parse_args() -> argparse.Namespace:
         help="Seconds of clip time represented by each generated keyframe.",
     )
     parser.add_argument("--poll-interval", type=float, default=60.0, help="Seconds between API polls.")
-    parser.add_argument("--ndi-fps", type=float, default=6.0, help="Playback rate for buffered frames over NDI.")
+    parser.add_argument("--ndi-fps", type=float, default=2.0, help="Playback rate for buffered frames over NDI.")
     parser.add_argument("--ndi-name", default="Latent Mycelium NDI")
     parser.add_argument(
         "--change-threshold",
