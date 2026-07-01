@@ -17,6 +17,22 @@ Use **Live OpenAQ Data** if you want to run the project with realtime PM2.5 data
 
 After the Python sender is running, open the TouchDesigner file and follow **TouchDesigner** to receive the `Latent Mycelium NDI` stream.
 
+## Run On Another Computer
+
+If you want to run this project on another computer, move or clone the entire repository, not just the Python scripts. The live sender expects the repository structure to stay intact because it resolves the project root from `README.md`, `environment.yml`, and `training_runs`, and it loads the LoRA weights from `training_runs/mycelium_lora_structure_v1`.
+
+Before the first run on a new machine:
+
+1. Install Conda or Miniforge.
+2. Copy or clone this whole repository to the new computer.
+3. Decide whether you need only the live NDI workflow or also notebooks/training.
+4. Create the `ml-art-ndi` environment first because it is the smallest path to a successful test.
+5. Stay online for the first inference run so Diffusers can download the base model `runwayml/stable-diffusion-v1-5`.
+
+Use `ml-art-ndi` if your goal is to generate images and send them to TouchDesigner over NDI.
+
+Use `ml-art` only if you also need notebooks, experiments, or LoRA training.
+
 ## Quick Run
 
 Use this section if the Conda environments already exist.
@@ -24,7 +40,7 @@ Use this section if the Conda environments already exist.
 ### 1. Open the repository
 
 ```bash
-cd /Users/yerie/Documents/GitHub/The-Latent-Mycelium
+cd /path/to/The-Latent-Mycelium
 ```
 
 If the repository is cloned somewhere else, replace the path with your local project path.
@@ -126,6 +142,8 @@ Do not run `td_ndi_bridge.py` from `base` or `ml-art`. It should be run from `ml
 
 These instructions are tested on Apple Silicon macOS. Windows users may be able to run the project with Conda, CPU or CUDA PyTorch, TouchDesigner, and NDI installed, but the Windows setup is not fully tested.
 
+If you only want to verify that the project runs on another computer, install `ml-art-ndi` first and skip `ml-art` until later.
+
 Install `mamba` in the base Conda environment if needed:
 
 ```bash
@@ -192,6 +210,8 @@ To use live OpenAQ data instead, remove `--manual-pm25`. The script automaticall
 OPENAQ_API_KEY=...
 OPENAQ_LOCATION_ID=...
 ```
+
+Create that `.env` file in the project root only if you want live API mode. It is not required for the fixed-value test commands in this README.
 
 Run live API mode with:
 
