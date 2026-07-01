@@ -65,7 +65,13 @@ This command generates one short buffered clip and then exits. It is the best fi
 python td_ndi_bridge.py --device cpu --manual-pm25 25 --duration 8 --image-interval 4 --ndi-fps 2 --run-once
 ```
 
-The first run can take several minutes because PyTorch, Diffusers, the base Stable Diffusion model, and the LoRA weights need to load.
+The first run can take several minutes because PyTorch, Diffusers, the base Stable Diffusion model, and the LoRA weights need to load. On CPU, a successful first run may still feel slow.
+
+During the first inference run, Diffusers may download the base model `runwayml/stable-diffusion-v1-5` from Hugging Face. A `HF_TOKEN` is optional for this README flow. Without it, Hugging Face may print a rate-limit warning, but the command can still succeed.
+
+`--run-once` means the script generates one complete buffered clip and then exits. It does not necessarily mean one generated image. With `--duration 8` and `--image-interval 4`, the default behavior is to generate three keyframes before writing the final buffered clip outputs.
+
+Because of that keyframe behavior, seeing multiple Diffusers progress bars such as repeated `21/21` runs is expected and does not mean the script is stuck.
 
 Expected terminal output includes JSON messages such as:
 
@@ -74,6 +80,8 @@ Expected terminal output includes JSON messages such as:
 "regenerating": true
 "event": "clip_ready"
 ```
+
+You may also see a warning about missing LoRA keys for `CLIPTextModel`. For the current weights in this repository, that warning is safe to ignore.
 
 When this succeeds, the script writes files to:
 
@@ -86,6 +94,12 @@ The most useful preview file is:
 ```text
 outputs/latent_exploration/ndi_live/latest.png
 ```
+
+A successful short test should:
+
+1. print `"event": "clip_ready"`
+2. return to the terminal prompt because `--run-once` has finished
+3. write `latest.png` and `latest.json` into `outputs/latent_exploration/ndi_live/`
 
 ### 4. Run the continuous test sender
 
